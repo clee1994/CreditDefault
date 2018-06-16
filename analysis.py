@@ -13,13 +13,7 @@ from sklearn.linear_model import LogisticRegression
 iter_no = 5
 gp_params = {'alpha': 1e-4}
 obj_bo = 'roc_auc'
-cv_splits = 4
-
-
-def evaluate(y_hat, y):
-    #function to evaluate predictions
-    print('accuracy: '+str(accuracy_score(y,y_hat)))
-    print('roc auc: '+str(roc_auc_score(y,y_hat,average='weighted')))
+cv_splits = 2
 
 
 def treesCV(eta, gamma,max_depth,min_child_weight,subsample,colsample_bytree,n_estimators):
@@ -50,23 +44,33 @@ def logitCV(C,max_iter=1000,tol=1e-4):
 
 
 
+def data_prep(data_df):
 
+	#how to handle types
+	data_df = data_df.select_dtypes(exclude=object)
+
+	#how to handle nan
+	data_df = data_df.fillna(data_df.mean())
+
+	return data_df
 
 
 # reading data
 data_train = pd.read_csv('data/application_train.csv', sep=',')
 
-
-#fill strategy
-data_train = data_train.dropna()
+data_train = data_prep(data_train)
 
 
-
-#to numeric strategy -> one hot (???)
-data_train = data_train.select_dtypes(exclude=object)
 
 
 X_train, X_test, y_train, y_test = train_test_split(np.array(data_train.drop(['TARGET','SK_ID_CURR'],axis=1)), np.array(data_train['TARGET']), test_size=0, random_state=42)
+
+
+# predicting
+data_pred = pd.read_csv('data/application_test.csv', sep=',')
+data_pred = data_prep(data_pred)
+
+X_test = data_pred.drop(['SK_ID_CURR'],axis=1)
 
 
 # feauture creation
@@ -82,70 +86,59 @@ logitBO.maximize(n_iter=iter_no, **gp_params)
 logitBO_best = logitBO.res['max']
 logit_best = LogisticRegression(**logitBO_best['max_params'],penalty='l2')
 logit_best.fit(X_train, y_train)
+y_hat = logit_best.predict_proba(X_test)[:,1]
 
 
-#Bayesian Hyper parameter optimization of support vector machine - l1 penalty
-svcl1BO = BayesianOptimization(svmCVl1,{'C':(0.1,5),'max_iter':(100,10000),'tol':(1e-6,1e-1)})
-svcl1BO.maximize(n_iter=iter_no, **gp_params)
-svcl1BO_best = svcl1BO.res['max']
-svcl1_best = LinearSVC(**svcl1BO_best['max_params'],penalty='l1')
-svcl1_best.fit(X_train, y_train)
+# #Bayesian Hyper parameter optimization of support vector machine - l1 penalty
+# svcl1BO = BayesianOptimization(svmCVl1,{'C':(0.1,5),'max_iter':(100,10000),'tol':(1e-6,1e-1)})
+# svcl1BO.maximize(n_iter=iter_no, **gp_params)
+# svcl1BO_best = svcl1BO.res['max']
+# svcl1_best = LinearSVC(**svcl1BO_best['max_params'],penalty='l1')
+# svcl1_best.fit(X_train, y_train)
+# y_hat = svcl1_best.predict(X_test)
+
+
+# #Bayesian Hyper parameter optimization of support vector machine - l2 penalty
+# svcl2BO = BayesianOptimization(svmCVl2,{'C':(0.1,5),'max_iter':(100,10000),'tol':(1e-6,1e-1)})
+# svcl2BO.maximize(n_iter=iter_no, **gp_params)
+# svcl2BO_best = svcl2BO.res['max']
+# svcl2_best = LinearSVC(**svcl2BO_best['max_params'],penalty='l2')
+# svcl2_best.fit(X_train, y_train)
+# y_hat = svcl2_best.predict(X_test)
+
+
+# #Bayesian Hyper parameter optimization of gradient boosted trees
+# treesBO = BayesianOptimization(treesCV,{'eta':(0.0001,1),
+#                                         'gamma':(0.0001,100),
+#                                         'max_depth':(0,300),
+#                                         'min_child_weight':(0.001,10),
+#                                         'subsample':(0,1),
+#                                         'colsample_bytree':(0,1),
+#                                         'n_estimators':(10,1000)})
+# treesBO.maximize(n_iter=iter_no, **gp_params)
+# tree_best = treesBO.res['max']
+# trees_model = xgb.XGBRegressor(objective='binary:logistic',
+#                                 seed=42,
+#                                 learning_rate=max(tree_best['max_params']['eta'],0),
+#                                 gamma=max(tree_best['max_params']['gamma'],0),
+#                                 max_depth=int(tree_best['max_params']['max_depth']),
+#                                 min_child_weight=int(tree_best['max_params']['min_child_weight']),
+#                                 silent=True,
+#                                 subsample=max(min(tree_best['max_params']['subsample'],1),0.0001),
+#                                 colsample_bytree=max(min(tree_best['max_params']['colsample_bytree'],1),0.0001),
+#                                 n_estimators=int(tree_best['max_params']['n_estimators']))
+# trees_model.fit(X_train, y_train)
+# y_hat = trees_model.predict(X_test)
 
 
 
-#Bayesian Hyper parameter optimization of support vector machine - l2 penalty
-svcl2BO = BayesianOptimization(svmCVl2,{'C':(0.1,5),'max_iter':(100,10000),'tol':(1e-6,1e-1)})
-svcl2BO.maximize(n_iter=iter_no, **gp_params)
-svcl2BO_best = svcl2BO.res['max']
-svcl2_best = LinearSVC(**svcl2BO_best['max_params'],penalty='l2')
-svcl2_best.fit(X_train, y_train)
 
 
 
-#Bayesian Hyper parameter optimization of gradient boosted trees
-treesBO = BayesianOptimization(treesCV,{'eta':(0.0001,1),
-                                        'gamma':(0.0001,100),
-                                        'max_depth':(0,300),
-                                        'min_child_weight':(0.001,10),
-                                        'subsample':(0,1),
-                                        'colsample_bytree':(0,1),
-                                        'n_estimators':(10,1000)})
-treesBO.maximize(n_iter=iter_no, **gp_params)
-tree_best = treesBO.res['max']
-trees_model = xgb.XGBRegressor(objective='binary:logistic',
-                                seed=42,
-                                learning_rate=max(tree_best['max_params']['eta'],0),
-                                gamma=max(tree_best['max_params']['gamma'],0),
-                                max_depth=int(tree_best['max_params']['max_depth']),
-                                min_child_weight=int(tree_best['max_params']['min_child_weight']),
-                                silent=True,
-                                subsample=max(min(tree_best['max_params']['subsample'],1),0.0001),
-                                colsample_bytree=max(min(tree_best['max_params']['colsample_bytree'],1),0.0001),
-                                n_estimators=int(tree_best['max_params']['n_estimators']))
-trees_model.fit(X_train, y_train)
-
-
-
-
-# predicting
-data_pred = pd.read_csv('data/application_test.csv', sep=',')
-
-
-X_test =  data_pred.drop(['SK_ID_CURR'],axis=1)
-
-
-#
-
-y_hat_logit = logit_best.predict(X_test)
-y_hat_svcl1 = svcl1_best.predict(X_test)
-y_hat_svcl2 = svcl2_best.predict(X_test)
-y_hat_trees = trees_model.predict(X_test)
 
 
 #write to file for submission
-submission = data_pred['SK_ID_CURR']
-submission['TARGET'] = y_hat_trees
-
+submission = pd.DataFrame({'SK_ID_CURR':np.array(data_pred['SK_ID_CURR']),'TARGET':y_hat})
 submission.to_csv('submission.csv',sep=',', index=False)
 
 
