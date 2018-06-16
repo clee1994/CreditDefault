@@ -14,6 +14,9 @@ cv_splits = 4
 gp_params = {'alpha': 1e-4}
 
 
+
+
+
 def evaluate(y_hat, y):
     #function to evaluate predictions
     print('accuracy: '+str(accuracy_score(y,y_hat)))

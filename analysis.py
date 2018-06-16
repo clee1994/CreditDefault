@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
 
-iter_no = 25
+iter_no = 5
 gp_params = {'alpha': 1e-4}
 obj_bo = 'roc_auc'
 cv_splits = 4
@@ -66,7 +66,7 @@ data_train = data_train.dropna()
 data_train = data_train.select_dtypes(exclude=object)
 
 
-X_train, X_test, y_train, y_test = train_test_split(np.array(data_train.drop(['TARGET','SK_ID_CURR'],axis=1)), np.array(data_train['TARGET']), test_size=0.01, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(np.array(data_train.drop(['TARGET','SK_ID_CURR'],axis=1)), np.array(data_train['TARGET']), test_size=0, random_state=42)
 
 
 # feauture creation
@@ -82,7 +82,6 @@ logitBO.maximize(n_iter=iter_no, **gp_params)
 logitBO_best = logitBO.res['max']
 logit_best = LogisticRegression(**logitBO_best['max_params'],penalty='l2')
 logit_best.fit(X_train, y_train)
-y_hat_logit = logit_best.predict(X_test)
 
 
 #Bayesian Hyper parameter optimization of support vector machine - l1 penalty
@@ -91,7 +90,6 @@ svcl1BO.maximize(n_iter=iter_no, **gp_params)
 svcl1BO_best = svcl1BO.res['max']
 svcl1_best = LinearSVC(**svcl1BO_best['max_params'],penalty='l1')
 svcl1_best.fit(X_train, y_train)
-y_hat_svcl1 = svcl1_best.predict(X_test)
 
 
 
@@ -101,7 +99,7 @@ svcl2BO.maximize(n_iter=iter_no, **gp_params)
 svcl2BO_best = svcl2BO.res['max']
 svcl2_best = LinearSVC(**svcl2BO_best['max_params'],penalty='l2')
 svcl2_best.fit(X_train, y_train)
-y_hat_svcl2 = svcl2_best.predict(X_test)
+
 
 
 #Bayesian Hyper parameter optimization of gradient boosted trees
@@ -125,7 +123,6 @@ trees_model = xgb.XGBRegressor(objective='binary:logistic',
                                 colsample_bytree=max(min(tree_best['max_params']['colsample_bytree'],1),0.0001),
                                 n_estimators=int(tree_best['max_params']['n_estimators']))
 trees_model.fit(X_train, y_train)
-y_hat_trees = trees_model.predict(X_test)
 
 
 
@@ -134,24 +131,21 @@ y_hat_trees = trees_model.predict(X_test)
 data_pred = pd.read_csv('data/application_test.csv', sep=',')
 
 
-X_test =  np.array(data_train.drop(['TARGET','SK_ID_CURR'],axis=1)) 
+X_test =  data_pred.drop(['SK_ID_CURR'],axis=1)
+
+
+#
+
+y_hat_logit = logit_best.predict(X_test)
+y_hat_svcl1 = svcl1_best.predict(X_test)
+y_hat_svcl2 = svcl2_best.predict(X_test)
 y_hat_trees = trees_model.predict(X_test)
 
 
-=  train_test_split(np.array(data_train.drop(['TARGET','SK_ID_CURR'],axis=1)), np.array(data_train['TARGET']), test_size=0.01, random_state=42)
+#write to file for submission
+submission = data_pred['SK_ID_CURR']
+submission['TARGET'] = y_hat_trees
+
+submission.to_csv('submission.csv',sep=',', index=False)
 
 
-
-
-
-
-
-
-
-#print results
-print('------ Results: SVC l1 ------')
-evaluate(y_hat_svcl1,y_test)
-print('------ Results: SVC l2 ------')
-evaluate(y_hat_svcl2,y_test)
-print('------ Results: XGB ------')
-evaluate(y_hat_trees,y_test)
