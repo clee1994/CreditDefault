@@ -81,12 +81,12 @@ X_test = data_pred.drop(['SK_ID_CURR'],axis=1)
 # models
 
 #Bayesian Hyper parameter optimization of logistic regression l2 penalty
-logitBO = BayesianOptimization(logitCV,{'C':(0.1,5)})
-logitBO.maximize(n_iter=iter_no, **gp_params)
-logitBO_best = logitBO.res['max']
-logit_best = LogisticRegression(**logitBO_best['max_params'],penalty='l2')
-logit_best.fit(X_train, y_train)
-y_hat = logit_best.predict_proba(X_test)[:,1]
+# logitBO = BayesianOptimization(logitCV,{'C':(0.1,5)})
+# logitBO.maximize(n_iter=iter_no, **gp_params)
+# logitBO_best = logitBO.res['max']
+# logit_best = LogisticRegression(**logitBO_best['max_params'],penalty='l2')
+# logit_best.fit(X_train, y_train)
+# y_hat = logit_best.predict_proba(X_test)[:,1]
 
 
 # #Bayesian Hyper parameter optimization of support vector machine - l1 penalty
@@ -107,28 +107,28 @@ y_hat = logit_best.predict_proba(X_test)[:,1]
 # y_hat = svcl2_best.predict(X_test)
 
 
-# #Bayesian Hyper parameter optimization of gradient boosted trees
-# treesBO = BayesianOptimization(treesCV,{'eta':(0.0001,1),
-#                                         'gamma':(0.0001,100),
-#                                         'max_depth':(0,300),
-#                                         'min_child_weight':(0.001,10),
-#                                         'subsample':(0,1),
-#                                         'colsample_bytree':(0,1),
-#                                         'n_estimators':(10,1000)})
-# treesBO.maximize(n_iter=iter_no, **gp_params)
-# tree_best = treesBO.res['max']
-# trees_model = xgb.XGBRegressor(objective='binary:logistic',
-#                                 seed=42,
-#                                 learning_rate=max(tree_best['max_params']['eta'],0),
-#                                 gamma=max(tree_best['max_params']['gamma'],0),
-#                                 max_depth=int(tree_best['max_params']['max_depth']),
-#                                 min_child_weight=int(tree_best['max_params']['min_child_weight']),
-#                                 silent=True,
-#                                 subsample=max(min(tree_best['max_params']['subsample'],1),0.0001),
-#                                 colsample_bytree=max(min(tree_best['max_params']['colsample_bytree'],1),0.0001),
-#                                 n_estimators=int(tree_best['max_params']['n_estimators']))
-# trees_model.fit(X_train, y_train)
-# y_hat = trees_model.predict(X_test)
+#Bayesian Hyper parameter optimization of gradient boosted trees
+treesBO = BayesianOptimization(treesCV,{'eta':(0.0001,1),
+                                        'gamma':(0.0001,100),
+                                        'max_depth':(0,300),
+                                        'min_child_weight':(0.001,10),
+                                        'subsample':(0,1),
+                                        'colsample_bytree':(0,1),
+                                        'n_estimators':(10,1000)})
+treesBO.maximize(n_iter=iter_no, **gp_params)
+tree_best = treesBO.res['max']
+trees_model = xgb.XGBRegressor(objective='binary:logistic',
+                                seed=42,
+                                learning_rate=max(tree_best['max_params']['eta'],0),
+                                gamma=max(tree_best['max_params']['gamma'],0),
+                                max_depth=int(tree_best['max_params']['max_depth']),
+                                min_child_weight=int(tree_best['max_params']['min_child_weight']),
+                                silent=True,
+                                subsample=max(min(tree_best['max_params']['subsample'],1),0.0001),
+                                colsample_bytree=max(min(tree_best['max_params']['colsample_bytree'],1),0.0001),
+                                n_estimators=int(tree_best['max_params']['n_estimators']))
+trees_model.fit(X_train, y_train)
+y_hat = trees_model.predict(X_test)
 
 
 
