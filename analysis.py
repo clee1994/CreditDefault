@@ -61,7 +61,7 @@ def data_prep(data_df):
 
     return pd.concat([data_df_num, data_df_obj],axis=1)
 
-if __name__ == '__main__'
+if __name__ == '__main__':
     # reading data
     data_train = pd.read_csv('data/application_train.csv', sep=',')
     data_train = data_prep(data_train)
