@@ -10,15 +10,16 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.svm import LinearSVC
 from sklearn.linear_model import LogisticRegression
 
-iter_no = 5
+iter_no = 10
 gp_params = {'alpha': 1e-4}
 obj_bo = 'roc_auc'
-cv_splits = 2
+cv_splits = 4
 
 
 def treesCV(eta, gamma,max_depth,min_child_weight,subsample,colsample_bytree,n_estimators):
     #function for cross validation gradient boosted trees
     return cross_val_score(xgb.XGBRegressor(objective='binary:logistic',
+    											tree_method = 'hist',
                                                 learning_rate=max(eta,0),
                                                 gamma=max(gamma,0),
                                                 max_depth=int(max_depth),
@@ -46,31 +47,35 @@ def logitCV(C,max_iter=1000,tol=1e-4):
 
 def data_prep(data_df):
 
-	#how to handle types
-	data_df = data_df.select_dtypes(exclude=object)
+    #how to handle types
+    data_df_num = data_df.select_dtypes(exclude=object)
+    data_df_obj = data_df.select_dtypes(include=object)
 
-	#how to handle nan
-	data_df = data_df.fillna(data_df.mean())
+    #how to handle nan
+    data_df_num = data_df_num.fillna(data_df_num.mean())
+    #data_df_obj = data_df_obj.fillna(data_df_obj.mode())
 
-	return data_df
+    #get dummy variables -> maybe reduce dimensionality here
+    data_df_obj = pd.get_dummies(data_df_obj, dummy_na=True)
+
+
+    return pd.concat([data_df_num, data_df_obj],axis=1)
 
 
 # reading data
 data_train = pd.read_csv('data/application_train.csv', sep=',')
-
 data_train = data_prep(data_train)
 
-
-
-
-X_train, X_test, y_train, y_test = train_test_split(np.array(data_train.drop(['TARGET','SK_ID_CURR'],axis=1)), np.array(data_train['TARGET']), test_size=0, random_state=42)
-
-
-# predicting
 data_pred = pd.read_csv('data/application_test.csv', sep=',')
 data_pred = data_prep(data_pred)
 
+data_train = data_train.drop(list(set(list(data_train))-set(list(data_pred))-set(['TARGET'])),axis=1)
+
+
+#train test split doesnt actually split
+X_train, X_test, y_train, y_test = train_test_split(np.array(data_train.drop(['TARGET','SK_ID_CURR'],axis=1)), np.array(data_train['TARGET']), test_size=0, random_state=42)
 X_test = data_pred.drop(['SK_ID_CURR'],axis=1)
+
 
 
 # feauture creation
@@ -108,16 +113,17 @@ X_test = data_pred.drop(['SK_ID_CURR'],axis=1)
 
 
 #Bayesian Hyper parameter optimization of gradient boosted trees
-treesBO = BayesianOptimization(treesCV,{'eta':(0.0001,1),
-                                        'gamma':(0.0001,100),
-                                        'max_depth':(0,300),
-                                        'min_child_weight':(0.001,10),
+treesBO = BayesianOptimization(treesCV,{'eta':(0.001,1),
+                                        'gamma':(0.0001,10),
+                                        'max_depth':(0,80),
+                                        'min_child_weight':(0.01,10),
                                         'subsample':(0,1),
                                         'colsample_bytree':(0,1),
-                                        'n_estimators':(10,1000)})
+                                        'n_estimators':(10,300)})
 treesBO.maximize(n_iter=iter_no, **gp_params)
 tree_best = treesBO.res['max']
 trees_model = xgb.XGBRegressor(objective='binary:logistic',
+								tree_method = 'hist',
                                 seed=42,
                                 learning_rate=max(tree_best['max_params']['eta'],0),
                                 gamma=max(tree_best['max_params']['gamma'],0),
@@ -128,7 +134,7 @@ trees_model = xgb.XGBRegressor(objective='binary:logistic',
                                 colsample_bytree=max(min(tree_best['max_params']['colsample_bytree'],1),0.0001),
                                 n_estimators=int(tree_best['max_params']['n_estimators']))
 trees_model.fit(X_train, y_train)
-y_hat = trees_model.predict(X_test)
+y_hat = trees_model.predict(np.array(X_test))
 
 
 
