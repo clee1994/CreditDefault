@@ -28,7 +28,7 @@ def treesCV(eta, gamma,max_depth,min_child_weight,subsample,colsample_bytree,n_e
                                                 subsample=max(min(subsample,1),0.0001),
                                                 colsample_bytree=max(min(colsample_bytree,1),0.0001),
                                                 n_estimators=int(n_estimators),
-                                                seed=42), X=X_train, y=y_train, scoring=obj_bo, cv=cv_splits, n_jobs=-1).mean()
+                                                seed=42,nthread=-1), X=X_train, y=y_train, scoring=obj_bo, cv=cv_splits, n_jobs=-1).mean()
 
 
 def svmCVl1(C,max_iter=1000,tol=1e-4):
@@ -132,7 +132,7 @@ if __name__ == '__main__':
                                     silent=True,
                                     subsample=max(min(tree_best['max_params']['subsample'],1),0.0001),
                                     colsample_bytree=max(min(tree_best['max_params']['colsample_bytree'],1),0.0001),
-                                    n_estimators=int(tree_best['max_params']['n_estimators']))
+                                    n_estimators=int(tree_best['max_params']['n_estimators']),nthread=-1)
     trees_model.fit(X_train, y_train)
     y_hat = trees_model.predict(np.array(X_test))
 
