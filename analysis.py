@@ -115,7 +115,7 @@ if __name__ == '__main__':
     #Bayesian Hyper parameter optimization of gradient boosted trees
     treesBO = BayesianOptimization(treesCV,{'eta':(0.001,3),
                                             'gamma':(0.0001,15),
-                                            'max_depth':(0,300),
+                                            'max_depth':(5,300),
                                             'min_child_weight':(0.01,10),
                                             'subsample':(0,1),
                                             'colsample_bytree':(0,1),
